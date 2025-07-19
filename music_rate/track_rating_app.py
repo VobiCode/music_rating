@@ -9,6 +9,20 @@ def sanitize_filename(name):
     # Удаляем опасные символы, заменяем пробелы на "_"
     return re.sub(r'[^a-zA-Zа-яА-Я0-9_]', '_', name.strip().replace(' ', '_'))
 
+def update_score():
+    track = track_name.get().strip()
+    if not track:
+        score_var.set("Введите название трека!")
+        return
+
+    main_score = sum(slider.get() for slider in sliders[:4])
+    bonus_score = sliders[4].get() + sliders[5].get()
+    total_score = main_score + bonus_score
+
+    score_var.set(
+        f"{sliders[0].get()} + {sliders[1].get()} + {sliders[2].get()} + {sliders[3].get()} + {sliders[4].get()} + {sliders[5].get()} = {total_score} БАЛЛОВ"
+    )
+
 def calculate_score():
     track = track_name.get().strip()
     if not track:
@@ -22,10 +36,6 @@ def calculate_score():
     main_score = sum(slider.get() for slider in sliders[:4])
     bonus_score = sliders[4].get() + sliders[5].get()
     total_score = main_score + bonus_score
-
-    score_var.set(
-        f"{sliders[0].get()} + {sliders[1].get()} + {sliders[2].get()} + {sliders[3].get()} + {sliders[4].get()} + {sliders[5].get()} = {total_score} БАЛЛОВ"
-    )
 
     with open(md_path, "w", encoding="utf-8") as f:
         f.write(f"# {track}\n")
@@ -92,7 +102,7 @@ for i, (text, max_val) in enumerate(criteria):
     tk.Label(row, text=text, width=30, anchor="w").pack(side="left")
     val = tk.IntVar(value=1)
     slider = tk.Scale(row, from_=1, to=max_val, orient="horizontal",
-                      variable=val, command=lambda e: calculate_score(),
+                      variable=val, command=lambda e: update_score(),
                       resolution=1, showvalue=False, length=300)
     slider.pack(side="left", padx=5)
     value_label = tk.Label(row, textvariable=val, width=3)

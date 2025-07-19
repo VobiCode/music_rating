@@ -1,4 +1,4 @@
-('D:\\track\\build\\track_rating_app\\PYZ-00.pyz',
+('D:\\GitHub\\repos\\music_rating\\music_rate\\build\\track_rating_app\\PYZ-00.pyz',
  [('_compat_pickle',
    'C:\\Users\\Александр\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\_compat_pickle.py',
    'PYMODULE'),
