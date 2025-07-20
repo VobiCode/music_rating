@@ -7,7 +7,6 @@ import re
 import sys
 
 def sanitize_filename(name):
-    # Удаляем опасные символы, заменяем пробелы на "_"
     return re.sub(r'[^a-zA-Zа-яА-Я0-9_]', '_', name.strip().replace(' ', '_'))
 
 def update_score():
@@ -17,11 +16,20 @@ def update_score():
         return
 
     main_score = sum(slider.get() for slider in sliders[:4])
-    bonus_score = sliders[4].get() + sliders[5].get()
-    total_score = main_score + bonus_score
+    atmosphere_bonus = round(main_score * (0.125 + sliders[4].get() * 0.125))
+    trend_bonus = round(main_score * (0.125 + sliders[5].get() * 0.125))
+    total_score = main_score + atmosphere_bonus + trend_bonus
+
+    atmosphere_percent = int((0.125 + sliders[4].get() * 0.125) * 100)
+    trend_percent = int((0.125 + sliders[5].get() * 0.125) * 100)
+
+    if hasattr(sliders[4], 'percent_var'):
+        sliders[4].percent_var.set(f"+{atmosphere_percent}%")
+    if hasattr(sliders[5], 'percent_var'):
+        sliders[5].percent_var.set(f"+{trend_percent}%")
 
     score_var.set(
-        f"{sliders[0].get()} + {sliders[1].get()} + {sliders[2].get()} + {sliders[3].get()} + {sliders[4].get()} + {sliders[5].get()} = {total_score} БАЛЛОВ"
+        f"{sliders[0].get()} + {sliders[1].get()} + {sliders[2].get()} + {sliders[3].get()} + {atmosphere_bonus} + {trend_bonus} = {total_score} БАЛЛОВ"
     )
 
 def calculate_score():
@@ -30,18 +38,31 @@ def calculate_score():
         score_var.set("Введите название трека!")
         return
 
-    # Определяем путь к папке main (где находится .exe файл)
     if getattr(sys, 'frozen', False):
-        # Если приложение скомпилировано в .exe
         exe_dir = os.path.dirname(sys.executable)
         main_dir = exe_dir
     else:
-        # Если запускается как .py файл
         current_dir = os.path.dirname(os.path.abspath(__file__))
         main_dir = os.path.join(current_dir, "main")
     
-    # Создаем папку rating_result в папке main
-    rating_dir = os.path.join(main_dir, "rating_result")
+    obsidian_dir = None
+    current_path = main_dir
+    while current_path and current_path != os.path.dirname(current_path):
+        obsidian_folder = os.path.join(current_path, ".obsidian")
+        obsidian_file = os.path.join(current_path, ".obsidian.vault")
+        if os.path.exists(obsidian_folder) or os.path.exists(obsidian_file):
+            obsidian_dir = current_path
+            break
+        current_path = os.path.dirname(current_path)
+    
+    user_vault = vault_path.get().strip()
+    if user_vault and os.path.exists(user_vault):
+        rating_dir = os.path.join(user_vault, "rating_result")
+    elif obsidian_dir:
+        rating_dir = os.path.join(obsidian_dir, "rating_result")
+    else:
+        rating_dir = os.path.join(main_dir, "rating_result")
+    
     if not os.path.exists(rating_dir):
         os.makedirs(rating_dir)
 
@@ -50,8 +71,9 @@ def calculate_score():
     md_path = os.path.join(rating_dir, md_filename)
 
     main_score = sum(slider.get() for slider in sliders[:4])
-    bonus_score = sliders[4].get() + sliders[5].get()
-    total_score = main_score + bonus_score
+    atmosphere_bonus = round(main_score * (0.125 + sliders[4].get() * 0.125))
+    trend_bonus = round(main_score * (0.125 + sliders[5].get() * 0.125))
+    total_score = main_score + atmosphere_bonus + trend_bonus
 
     with open(md_path, "w", encoding="utf-8") as f:
         f.write(f"# {track}\n")
@@ -60,36 +82,55 @@ def calculate_score():
             "Рифмы и/или Образы",
             "Структура и/или Ритмика",
             "Реализация выбранного стиля",
-            "Индивидуальность и/или Харизма",
+            "Инивдидуальность и/или Харизма",
             "Атмосфера и/или Вайб",
             "Трендовость и/или Популярность"
         ]
-        for i in range(6):
+        for i in range(4):
             f.write(f"- **{labels[i]}**: {sliders[i].get()}\n")
+        f.write(f"- **{labels[4]}**: {sliders[4].get()} (бонус: +{atmosphere_bonus})\n")
+        f.write(f"- **{labels[5]}**: {sliders[5].get()} (бонус: +{trend_bonus})\n")
         f.write(f"\n**Общий балл:** {total_score}\n")
 
-    open_in_obsidian(md_path)
 
-def open_in_obsidian(filepath):
+    open_folder(md_path)
+    
+    short_path = os.path.basename(md_path)
+    score_var.set(f"Файл создан:\n{short_path}\nв папке:\n{os.path.dirname(md_path)}")
+
+def open_folder(filepath):
+    folder_path = os.path.dirname(filepath)
     if os.name == 'nt':
-        os.startfile(filepath)  # Откроет файл в ассоциированной программе (обычно Obsidian)
+        subprocess.Popen(f'explorer "{folder_path}"')
     elif os.name == 'posix':
-        subprocess.Popen(['open', filepath])
+        subprocess.Popen(['open', folder_path])
 
-def open_folder():
-    # Определяем путь к папке rating_result
+def open_rating_folder():
     if getattr(sys, 'frozen', False):
-        # Если приложение скомпилировано в .exe
         exe_dir = os.path.dirname(sys.executable)
         main_dir = exe_dir
     else:
-        # Если запускается как .py файл
         current_dir = os.path.dirname(os.path.abspath(__file__))
         main_dir = os.path.join(current_dir, "main")
     
-    rating_dir = os.path.join(main_dir, "rating_result")
+    obsidian_dir = None
+    current_path = main_dir
+    while current_path and current_path != os.path.dirname(current_path):
+        obsidian_folder = os.path.join(current_path, ".obsidian")
+        obsidian_file = os.path.join(current_path, ".obsidian.vault")
+        if os.path.exists(obsidian_folder) or os.path.exists(obsidian_file):
+            obsidian_dir = current_path
+            break
+        current_path = os.path.dirname(current_path)
     
-    # Создаем папку, если её нет
+    user_vault = vault_path.get().strip()
+    if user_vault and os.path.exists(user_vault):
+        rating_dir = os.path.join(user_vault, "rating_result")
+    elif obsidian_dir:
+        rating_dir = os.path.join(obsidian_dir, "rating_result")
+    else:
+        rating_dir = os.path.join(main_dir, "rating_result")
+    
     if not os.path.exists(rating_dir):
         os.makedirs(rating_dir)
     
@@ -98,15 +139,16 @@ def open_folder():
     elif os.name == 'posix':
         subprocess.Popen(['open', rating_dir])
 
-# GUI
 root = tk.Tk()
 root.title("Оценка Трека")
-root.geometry("600x520")
+root.geometry("600x580")
 root.resizable(False, False)
 
 tk.Label(root, text="Название трека:").pack()
 track_name = tk.StringVar()
 tk.Entry(root, textvariable=track_name, font=("Arial", 14)).pack(fill="x", padx=10, pady=5)
+
+vault_path = tk.StringVar()
 
 slider_frame = tk.Frame(root)
 slider_frame.pack(pady=10)
@@ -131,6 +173,14 @@ for i, (text, max_val) in enumerate(criteria):
                       variable=val, command=lambda e: update_score(),
                       resolution=1, showvalue=False, length=300)
     slider.pack(side="left", padx=5)
+    
+    if i >= 4:
+        percent_var = tk.StringVar()
+        percent_label = tk.Label(row, textvariable=percent_var, width=8)
+        percent_label.pack(side="right")
+        val.percent_var = percent_var
+        val.percent_label = percent_label
+    
     value_label = tk.Label(row, textvariable=val, width=3)
     value_label.pack(side="right")
     sliders.append(val)
@@ -138,10 +188,14 @@ for i, (text, max_val) in enumerate(criteria):
 tk.Label(root, textvariable=score_var, font=("Arial", 12, "bold")).pack(pady=15)
 score_var.set("Ожидаем оценку...")
 
+if hasattr(sliders[4], 'percent_var'):
+    sliders[4].percent_var.set("+12%")
+if hasattr(sliders[5], 'percent_var'):
+    sliders[5].percent_var.set("+12%")
+
 button_frame = tk.Frame(root)
 button_frame.pack()
 
-tk.Button(button_frame, text="Оценить", font=("Arial", 14), command=calculate_score, bg="#dd4444", fg="white").pack(side="left", padx=10)
-tk.Button(button_frame, text="См. в папке", font=("Arial", 14), command=open_folder, bg="#4444dd", fg="white").pack(side="left", padx=10)
+tk.Button(button_frame, text="Оценить", font=("Arial", 14), command=calculate_score, bg="#dd4444", fg="white").pack(padx=10)
 
 root.mainloop()
