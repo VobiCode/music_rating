@@ -180,10 +180,6 @@ score_var.set("Ожидаем оценку...")
 
 if hasattr(sliders[4], 'value_var'):
     sliders[4].value_var.set("1")
-root.title("Оценка Трека")
-root.geometry("690x520")
-root.resizable(True, True)
-
 
 button_frame = tk.Frame(root)
 button_frame.pack()
